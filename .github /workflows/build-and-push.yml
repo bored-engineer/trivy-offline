@@ -1,0 +1,36 @@
+name: Build & Push
+on:
+  schedule:
+    # We want to run shortly after trivy publishes new DBs which happens at the 0th minute every 6 hours
+    # https://github.com/aquasecurity/trivy-db/blob/db9bf07792afba73dceb20b99723c8af007da1f8/.github/workflows/cron.yml#L5
+    # https://github.com/aquasecurity/trivy-java-db/blob/be4b443fed1db725fb1d21688567a5b644df9ea7/.github/workflows/cron.yml#L5
+    - cron: '30 */6 * * *'
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        with:
+          registry: ghcr.io
+          username: bored-engineer
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
+          push: true
+          tags: ghcr.io/bored-engineer/trivy-offline:latest
+          build-args: CACHEBUST=${{ github.run_id }}
